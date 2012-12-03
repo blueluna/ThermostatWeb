@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Temperature{% endblock %}
+{% block content %}
+    {% if temperatures %}
+        <table>
+            {% for temp in temperatures %}
+                <tr>
+                    <td><tt>{{ temp.datetime|date:"SHORT_DATE_FORMAT" }} {{ temp.datetime|time:"H:i:s" }}</tt></td>
+                    <td><tt>{{ temp.value }}</tt></td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No device.</p>
+    {% endif %}
+{% endblock %}

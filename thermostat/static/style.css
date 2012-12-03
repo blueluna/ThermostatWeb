@@ -1,0 +1,25 @@
+html {
+    color: #333;
+    background-color: #fff;
+    font-family: "Source Sans Pro";
+}
+body {
+    width: 1000px;
+    margin: 0 auto;
+}
+#header {
+	padding: 1em 0.5em;
+	font-size: 120%;
+	background-color: #eee;
+}
+#footer {
+	padding: 1em 0.5em;
+	font-size: 80%;
+	background-color: #eee;
+}
+#content {
+	padding: 1em 0.5em;
+	background-color: #fff;
+	border-left: 1px dashed #eee;
+	border-right: 1px dashed #eee;
+}
