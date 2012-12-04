@@ -1,16 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Temperature{% endblock %}
+{% block javascript %}
+    var deviceId = '{{ device }}';
+
+    var XHRFailureHandler = function(xhr)
+    {
+        var errorElement = $('error');
+        errorElement.set('html', 'request failed');
+    }
+
+    var JsonRpcTemperatures = function(object)
+    {
+        var result = object['result']
+        if (result) {
+            var device = result['device'];
+            var temperatures = result['temperatures'];
+            var elements = new Array();
+            temperatures.each(function (item) {
+                var date = Date.parse(item['datetime'])
+                elements.push(new Element('tr',
+                {
+                    html: '<td>'+date.format('%T')+'</td><td>'+item['value']+'</td>'
+                }));
+            });
+            var tbl = new Element('table')
+            tbl.adopt(elements);
+            $('temperatures').empty();
+            $('temperatures').adopt(tbl);
+        }
+    }
+
+    window.addEvent('domready', function(){
+        var container = $('temperatures');
+        var error = $('error');
+
+        var query = {'jsonrpc': '2.0', 'id': deviceId, 'method': 'thermostat.temperature.now', 'params': [deviceId]}
+        var request = new Request.JSON({
+            url: '/json/',
+            urlEncoded: false,
+            headers: {'content-type': "application/json; charset=utf-8"},
+            onRequest: function(){
+                container.set('html', 'Request...');
+            },
+            onFailure: XHRFailureHandler,
+            onComplete: JsonRpcTemperatures,
+            data: JSON.encode(query)
+        }).send();
+    });
+{% endblock %}
 {% block content %}
-    {% if temperatures %}
-        <table>
-            {% for temp in temperatures %}
-                <tr>
-                    <td><tt>{{ temp.datetime|date:"SHORT_DATE_FORMAT" }} {{ temp.datetime|time:"H:i:s" }}</tt></td>
-                    <td><tt>{{ temp.value }}</tt></td>
-                </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No device.</p>
-    {% endif %}
+    <div id="temperatures"></div>
 {% endblock %}

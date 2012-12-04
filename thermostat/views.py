@@ -51,6 +51,20 @@ def rpc_temperature_list(request, thermostatId):
         return {'devices': result}
     raise ThermostatDeviceNotFound()
 
+@jsonrpc_method('thermostat.temperature.now(deviceId=Number) -> Object')
+def rpc_temperatures_now(request, deviceId):
+    try:
+        temperature = TemperatureDevice.objects.get(deviceId=deviceId)
+    except ObjectDoesNotExist:
+        temperature = None
+    if temperature:
+        temperatures = Temperature.objects.filter(device=temperature.id).order_by('-datetime')[:30]
+        temps = []
+        for temperature in temperatures:
+            temps.append({'datetime': temperature.datetime.isoformat(sep=' '), 'value': temperature.value})
+        return {'device': deviceId, 'temperatures': temps}
+    raise TemperatureDeviceNotFound()
+
 def index(request):
     devices = ThermostatDevice.objects.all()
     return render(request, 'index.html', {'devices': devices})
@@ -73,4 +87,4 @@ def temperature(request, id):
     temperatures = None
     if temperature:
         temperatures = Temperature.objects.filter(device=temperature.id).order_by('-datetime')[:30]
-    return render(request, 'temperature.html', {'temperatures': temperatures})
+    return render(request, 'temperature.html', {'device': id, 'temperatures': temperatures})
