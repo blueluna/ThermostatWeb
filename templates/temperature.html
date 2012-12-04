@@ -2,6 +2,37 @@
 {% block title %}Temperature{% endblock %}
 {% block javascript %}
     var deviceId = '{{ device }}';
+    var chart;
+
+    var drawChart = function(name, series) {
+        chart = new Highcharts.Chart({
+            chart: {
+                renderTo: 'chart',
+                type: 'line'
+            },
+            title: {
+                text: 'Temperatures'
+            },
+            xAxis: {
+                type: 'datetime',
+                tickInterval: 60000,
+                labels: {
+                    rotation: 90
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Degrees Celsius'
+                }
+            },
+            series: [{
+                lineWidth: 1,
+                marker: {radius: 2},
+                name: name,
+                data: series
+            }]
+        });
+    }
 
     var XHRFailureHandler = function(xhr)
     {
@@ -15,18 +46,16 @@
         if (result) {
             var device = result['device'];
             var temperatures = result['temperatures'];
-            var elements = new Array();
+            var series = new Array();
             temperatures.each(function (item) {
-                var date = Date.parse(item['datetime'])
-                elements.push(new Element('tr',
-                {
-                    html: '<td>'+date.format('%T')+'</td><td>'+item['value']+'</td>'
-                }));
+                var date = new Date(Date.parse(item['datetime']))
+                var d = Date.UTC(
+                    date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+                    date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
+                var f = parseFloat(item['value']);
+                series.push([d, f]);
             });
-            var tbl = new Element('table')
-            tbl.adopt(elements);
-            $('temperatures').empty();
-            $('temperatures').adopt(tbl);
+            drawChart(device, series);
         }
     }
 
@@ -49,5 +78,6 @@
     });
 {% endblock %}
 {% block content %}
+    <div id="chart"></div>
     <div id="temperatures"></div>
 {% endblock %}

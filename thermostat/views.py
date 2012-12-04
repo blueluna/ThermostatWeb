@@ -58,10 +58,10 @@ def rpc_temperatures_now(request, deviceId):
     except ObjectDoesNotExist:
         temperature = None
     if temperature:
-        temperatures = Temperature.objects.filter(device=temperature.id).order_by('-datetime')[:30]
+        temperatures = Temperature.objects.filter(device=temperature.id).order_by('-datetime')[:240]
         temps = []
         for temperature in temperatures:
-            temps.append({'datetime': temperature.datetime.isoformat(sep=' '), 'value': temperature.value})
+            temps.append({'datetime': temperature.datetime.isoformat(), 'value': temperature.value})
         return {'device': deviceId, 'temperatures': temps}
     raise TemperatureDeviceNotFound()
 
