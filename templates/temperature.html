@@ -15,7 +15,7 @@
             },
             xAxis: {
                 type: 'datetime',
-                tickInterval: 60000,
+                tickInterval: 3600000,
                 labels: {
                     rotation: 90
                 }
@@ -37,7 +37,13 @@
     var XHRFailureHandler = function(xhr)
     {
         var errorElement = $('error');
-        errorElement.set('html', 'request failed');
+        errorElement.set('html', 'There was an XHR error.');
+    }
+
+    var JsonErrorHandler = function(text, error)
+    {
+        var errorElement = $('error');
+        errorElement.set('html', 'There was an JSON-RPC error.<pre>'+error+'</pre>');
     }
 
     var JsonRpcTemperatures = function(object)
@@ -60,17 +66,12 @@
     }
 
     window.addEvent('domready', function(){
-        var container = $('temperatures');
-        var error = $('error');
-
         var query = {'jsonrpc': '2.0', 'id': deviceId, 'method': 'thermostat.temperature.now', 'params': [deviceId]}
         var request = new Request.JSON({
             url: '/json/',
             urlEncoded: false,
             headers: {'content-type': "application/json; charset=utf-8"},
-            onRequest: function(){
-                container.set('html', 'Request...');
-            },
+            onError: JsonErrorHandler,
             onFailure: XHRFailureHandler,
             onComplete: JsonRpcTemperatures,
             data: JSON.encode(query)
