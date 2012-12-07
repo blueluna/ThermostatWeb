@@ -3,12 +3,12 @@
 <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" /> 
     <title>{% block title %}{% endblock %} - Thermostat</title>
-    <link rel="stylesheet" href="/static/thermostat.css" />
-    <script type="text/javascript" src="/static/mootools-core-1.4.5-full-nocompat-yc.js"></script>
-    <script type="text/javascript" src="/static/thermostat.js"></script>
-    <link rel="stylesheet" href="/static/xcharts.min.css" />
-    <script type="text/javascript" src="/static/d3.v2.min.js"></script>
-	<script type="text/javascript" src="/static/xcharts.min.js"></script>
+    <link rel="stylesheet" href="{{STATIC_URL}}thermostat.css" />
+    <script type="text/javascript" src="{{STATIC_URL}}mootools-core-1.4.5-full-nocompat-yc.js"></script>
+    <script type="text/javascript" src="{{STATIC_URL}}thermostat.js"></script>
+    <link rel="stylesheet" href="{{STATIC_URL}}xcharts.min.css" />
+    <script type="text/javascript" src="{{STATIC_URL}}d3.v2.min.js"></script>
+	<script type="text/javascript" src="{{STATIC_URL}}xcharts.min.js"></script>
 	{% block head %}{% endblock %}
     <style type="text/css">
         {% block stylesheet %}{% endblock %}
