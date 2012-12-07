@@ -2,10 +2,12 @@
 <html xmlns="http://www.w3.org/1999/html">
 <head>
     <title>{% block title %}{% endblock %} - Thermostat</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/thermostat.css" />
     <script type="text/javascript" src="/static/mootools-core-1.4.5-full-nocompat-yc.js"></script>
+    <script type="text/javascript" src="/static/thermostat.js"></script>
     <script type="text/javascript" src="/static/highcharts/adapters/mootools-adapter.js"></script>
     <script type="text/javascript" src="/static/highcharts/highcharts.js"></script>
+	{% block head %}{% endblock %}
     <style type="text/css">
         {% block stylesheet %}{% endblock %}
     </style>
@@ -14,11 +16,11 @@
     </script>
 </head>
 <body>
-<div id="header">Thermostat Service</div>
+<div id="header">{% block header %}Thermostat Service{% endblock %}</div>
 <div id="error"></div>
 <div id="content">
 {% block content %}{% endblock %}
 </div>
-<div id="footer">&copy; 2012 Erik Svensson</div>
+<div id="footer">{% block footer %}&copy; 2012 Erik Svensson{% endblock %}</div>
 </body>
 </html>

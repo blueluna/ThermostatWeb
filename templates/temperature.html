@@ -1,6 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Temperature{% endblock %}
+{% block title %}Temperatures for {{ device|default:"Unknown" }}{% endblock %}
+{% block header %}Temperatures for {{ device|default:"Unknown" }}{% endblock %}
 {% block javascript %}
+    var api = new ThermostatAPI("/thermostat/json/");
     var deviceId = '{{ device }}';
     var chart;
 
@@ -34,48 +36,30 @@
         });
     }
 
-    var XHRFailureHandler = function(xhr)
+    var ErrorHandler = function(id, code, message)
     {
         var errorElement = $('error');
-        errorElement.set('html', 'There was an XHR error.');
+        errorElement.set('html', 'There was an JSON-RPC error.<pre>'+message+'</pre>');
     }
 
-    var JsonErrorHandler = function(text, error)
+    var JsonRpcTemperatures = function(id, result)
     {
-        var errorElement = $('error');
-        errorElement.set('html', 'There was an JSON-RPC error.<pre>'+error+'</pre>');
-    }
-
-    var JsonRpcTemperatures = function(object)
-    {
-        var result = object['result']
         if (result) {
             var device = result['device'];
             var temperatures = result['temperatures'];
             var series = new Array();
             temperatures.each(function (item) {
-                var date = new Date(Date.parse(item['datetime']))
-                var d = Date.UTC(
-                    date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
-                    date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
-                var f = parseFloat(item['value']);
-                series.push([d, f]);
+                var date = Date.parse(item['datetime']);
+                var value = parseFloat(item['value']);
+                series.push([date, value]);
             });
             drawChart(device, series);
         }
     }
 
     window.addEvent('domready', function(){
-        var query = {'jsonrpc': '2.0', 'id': deviceId, 'method': 'thermostat.temperature.now', 'params': [deviceId]}
-        var request = new Request.JSON({
-            url: '/json/',
-            urlEncoded: false,
-            headers: {'content-type': "application/json; charset=utf-8"},
-            onError: JsonErrorHandler,
-            onFailure: XHRFailureHandler,
-            onComplete: JsonRpcTemperatures,
-            data: JSON.encode(query)
-        }).send();
+        api.registerErrback(ErrorHandler);
+        api.query('thermostat.temperature.now', [deviceId], deviceId, JsonRpcTemperatures);
     });
 {% endblock %}
 {% block content %}

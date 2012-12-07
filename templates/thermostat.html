@@ -4,10 +4,10 @@
     {% if tempDevices %}
         <ul>
             {% for device in tempDevices %}
-                <li><a href="/temperature/{{ device.deviceId }}/">{{ device.deviceId }}: {{ device.name }}</a></li>
+                <li><a href="{% url thermostat.views.temperature device.deviceId %}">{{ device.deviceId }}: {{ device.name }}</a></li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No device.</p>
+        <p>No thermostat device.</p>
     {% endif %}
 {% endblock %}
