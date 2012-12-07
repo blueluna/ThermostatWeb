@@ -1,7 +1,8 @@
+@import url("/static/font/opensans/stylesheet.css");
 html {
     color: #333;
     background-color: #fff;
-    font-family: "Source Sans Pro";
+    font-family: "Open Sans", "Calibri", sans-serif;
 }
 body {
     width: 1000px;

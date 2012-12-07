@@ -1,39 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Temperatures for {{ device|default:"Unknown" }}{% endblock %}
 {% block header %}Temperatures for {{ device|default:"Unknown" }}{% endblock %}
+{% block stylesheet %}
+.xchart .line {
+  stroke-width: 1px;
+}
+.xchart circle {
+  stroke-width: 1px;
+}
+.xchart .axis text {
+  font-family: "Open Sans", sans-serif;
+}
+#tooltip {
+    position: absolute;
+    display: none;
+    background-color: rgba(255, 255, 255, 0.78);
+    border: 1px solid #3880AA;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25em;
+    font-size: 9pt;
+}
+#chart {
+    height: 400px;
+    margin: 1em;
+}
+{% endblock %}
 {% block javascript %}
     var api = new ThermostatAPI("/thermostat/json/");
     var deviceId = '{{ device }}';
     var chart;
 
     var drawChart = function(name, series) {
-        chart = new Highcharts.Chart({
-            chart: {
-                renderTo: 'chart',
-                type: 'line'
+        var data = {
+            "xScale": "time",
+            "yScale": "linear",
+            "main": [ { "className": ".temperatures", "data": series } ]
+        };
+        var opts = {
+            "tickFormatX": function (x) { return d3.time.format('%H:%M')(x); },
+            "tickFormatY": function (y) { return d3.format('.1f')(y); },
+            "interpolation": "step-after",
+            "timing": 200,
+            "mouseover": function (d, i) {
+                var item = $$(this)[0];
+                var pos = item.getPosition();
+                var tooltip = $$('#tooltip')[0];
+                tooltip.set('html', d3.time.format('%Y-%m-%d %H:%M')(d.x) + ': ' + d3.format('.4f')(d.y) + "&#x2103;");
+                tooltip.setStyles({top: pos.y, left: pos.x + 16, display: 'block'});
+                var size = tooltip.getSize();
+                tooltip.setStyle('top', pos.y - (size.y / 4));
             },
-            title: {
-                text: 'Temperatures'
-            },
-            xAxis: {
-                type: 'datetime',
-                tickInterval: 3600000,
-                labels: {
-                    rotation: 90
-                }
-            },
-            yAxis: {
-                title: {
-                    text: 'Degrees Celsius'
-                }
-            },
-            series: [{
-                lineWidth: 1,
-                marker: {radius: 2},
-                name: name,
-                data: series
-            }]
-        });
+            "mouseout": function (x) {
+                $$('#tooltip').setStyle('display', 'none');
+            }
+        };
+        chart = new xChart('line-dotted', data, '#chart', opts);
     }
 
     var ErrorHandler = function(id, code, message)
@@ -49,9 +70,9 @@
             var temperatures = result['temperatures'];
             var series = new Array();
             temperatures.each(function (item) {
-                var date = Date.parse(item['datetime']);
+                var date = d3.time.format.iso.parse(item['datetime']);
                 var value = parseFloat(item['value']);
-                series.push([date, value]);
+                series.push({x: date, y: value});
             });
             drawChart(device, series);
         }
@@ -63,6 +84,6 @@
     });
 {% endblock %}
 {% block content %}
+    <div id="tooltip"></div>
     <div id="chart"></div>
-    <div id="temperatures"></div>
 {% endblock %}
