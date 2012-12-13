@@ -46,6 +46,12 @@
         chart = new xChart('line-dotted', chartData, '#temperature-chart', chartOptions);
     }
 
+    var ChartDataComparison = function(a, b)
+    {
+        var result = a.className < b.className ? -1 : 1;
+        return result;
+    }
+
     var JsonRpcTemperatures = function(id, result)
     {
         var deviceId = result['device'];
@@ -60,6 +66,7 @@
             chartData.main.push(
                 { "className": "."+deviceId, "data": sensors[deviceId].temperatures }
             );
+            chartData.main.sort(ChartDataComparison);
             DrawChart();
         }
     }
