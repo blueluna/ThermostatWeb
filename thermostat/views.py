@@ -173,10 +173,17 @@ def rpc_thermostat_set_configuration(request, device, datetime, mode, thresholdN
         except Exception:
             configuration = None
         dt = rpc_parse_datetime(datetime)
-        if configuration is None or \
-                configuration.mode != mode or \
-                configuration.thresholdNormal != thresholdNormal or \
-                configuration.thresholdLow != thresholdLow:
+        replace = False
+        if configuration is None:
+            replace = True
+        else:
+            if int(mode) != int(configuration.mode):
+                replace = True
+            if thresholdNormal != configuration.thresholdNormal:
+                replace = True
+            if thresholdLow != configuration.thresholdLow:
+                replace = True
+        if replace:
             cfg = ThermostatConfiguration(
                 device=thermostat, datetime=dt, mode=mode,
                 thresholdNormal=thresholdNormal,

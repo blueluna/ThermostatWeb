@@ -3,59 +3,129 @@
 {% block javascript %}
     var api = new ThermostatAPI("/thermostat/json/");
     var deviceId = {{ id }};
-    var sensors = [{% for device in tempDevices %}{ name: "{{ device.name }}", id: "{{ device.deviceId }}", url: "{% url thermostat.views.thermostat_temperature id device.deviceId %}" },{% endfor %}];
+    var sensors = {
+        {% for device in tempDevices %}
+        "{{ device.deviceId }}": { name: "{{ device.name }}", id: "{{ device.deviceId }}", url: "{% url thermostat.views.thermostat_temperature id device.deviceId %}", temperatures: []},
+        {% endfor %}
+        };
+    var chart;
+    var chartOptions = {
+            "tickFormatX": function (x) { return d3.time.format('%H:%M')(x); },
+            "tickFormatY": function (y) { return d3.format('.1f')(y); },
+            "interpolation": "step-after",
+            "timing": 200,
+            "mouseover": function (d, i) {
+                var item = $$(this)[0];
+                var pos = item.getPosition();
+                var tooltip = $$('#tooltip')[0];
+                tooltip.set('html', d3.time.format('%Y-%m-%d %H:%M')(d.x) + ': ' + d3.format('.4f')(d.y) + "&#x2103;");
+                tooltip.setStyles({top: pos.y, left: pos.x + 16, display: 'block'});
+                var size = tooltip.getSize();
+                tooltip.setStyle('top', pos.y - (size.y / 4));
+            },
+            "mouseout": function (x) {
+                $$('#tooltip').setStyle('display', 'none');
+            }
+    };
+    var chartData = {
+        "xScale": "time",
+        "yScale": "linear",
+        "main": [ ],
+        "comp": [ ]
+    };
+    var configuration = {
+        datetime: 0,
+        mode: -1,
+        thresholdNormal: 0,
+        thresholdLow: 0
+    }
 
+    var DrawChart = function()
+    {
+        $("temperature-plot").setStyle('display', 'block');
+        chart = new xChart('line-dotted', chartData, '#temperature-chart', chartOptions);
+    }
+
+    var JsonRpcTemperatures = function(id, result)
+    {
+        var deviceId = result['device'];
+        var temperatures = result['temperatures'];
+        if (sensors[deviceId] != undefined) {
+            sensors[deviceId].temperatures = []
+            temperatures.each(function (item) {
+                var date = d3.time.format.iso.parse(item['datetime']);
+                var value = parseFloat(item['value']);
+                sensors[deviceId].temperatures.push({x: date, y: value});
+            });
+            chartData.main.push(
+                { "className": "."+deviceId, "data": sensors[deviceId].temperatures }
+            );
+            DrawChart();
+        }
+    }
     var JsonRpcConfiguration = function(id, result)
     {
         if (result) {
-            var when = d3.time.format.iso.parse(result['datetime']);
-            var mode = result['mode'];
-            var thresholdNormal = result['thresholdNormal'] / 10;
-            var thresholdLow = result['thresholdLow'] / 10;
+            configuration.datetime = d3.time.format.iso.parse(result['datetime']);
+            configuration.mode = parseInt(result['mode']);
+            configuration.thresholdNormal = parseInt(result['thresholdNormal']) / 10;
+            configuration.thresholdLow = parseInt(result['thresholdLow']) / 10;
 
             var element = $$("#cfg-mode")[0];
-            element.setProperty('value', mode);
+            element.setProperty('value', configuration.mode);
             element = $$("#cfg-threshold-normal")[0];
-            element.setProperty('value', thresholdNormal.toFixed(1));
+            element.setProperty('value', configuration.thresholdNormal.toFixed(1));
             element = $$("#cfg-threshold-low")[0];
-            element.setProperty('value', thresholdLow.toFixed(1));
-            $$("#cfg-updated")[0].set('text', when.format('%H:%M %Y-%m-%d'));
+            element.setProperty('value', configuration.thresholdLow.toFixed(1));
+            $$("#cfg-updated")[0].set('text', configuration.datetime.format('%H:%M %Y-%m-%d'));
             element = $$("#configuration")[0];
             element.setStyle('display', 'block');
+
+            api.query('thermostat.get_states_range', [deviceId], deviceId, JsonRpcState);
         }
     }
     var JsonRpcState = function(id, result)
     {
         if (result) {
             var states = result['states'];
-            var root = $("state");
-            var table = new HtmlTable($('state-table'));
-            var day = -1
+            var series = new Array();
+            var offset;
+            if (configuration.mode == 0) {
+                offset = configuration.thresholdNormal - 0.5;
+            }
+            else if (configuration.mode == 1) {
+                offset = configuration.thresholdLow - 0.5;
+            }
+            else {
+                offset = 25;
+            }
+
             states.each(function (item) {
                 var when = d3.time.format.iso.parse(item['datetime']);
-                var date = '';
-                if (when.getDay() != day) {
-                    date = when.format('%Y-%m-%d');
-                    day = when.getDay();
-                }
-                var time = when.format('%H:%M');
-                var state = item['value'] ? 'On' : 'Off'
-                table.push([date, time, state]);
+                var value = offset + item['value'];
+                series.push({x: when, y: value});
             });
-            root.setStyle('display', 'block');
+            chartData.comp.push(
+                { "className": ".states", "data": series, "type": "line" }
+            );
+            DrawChart();
         }
     }
     var JsonRpcSensors = function(id, result)
     {
-        var table = new HtmlTable($('sensor-table'));
-        sensors.each(function (item) {
-            table.push(['<a href="'+item.url+'">'+item.name+' ('+item.id+')</a>']);
+        Object.each(sensors, function (item) {
+            api.query('thermostat.temperature.get_range', [item.id], item.id, JsonRpcTemperatures);
         });
-        $("sensors").setStyle('display', 'block');
     }
-    var JsonRpcGetConfiguration = function(id, result)
+    var JsonRpcGetConfiguration = function()
     {
         api.query('thermostat.get_configuration', [deviceId], deviceId, JsonRpcConfiguration);
+    }
+    var JsonRpcSetConfigurationResponse = function(id, result)
+    {
+        if (result == "OK") {
+            JsonRpcGetConfiguration();
+        }
     }
     var JsonRpcSetConfiguration = function()
     {
@@ -65,13 +135,12 @@
         var thresholdNormal = $('cfg-threshold-normal').getProperty('value') * 10;
         var thresholdLow = $('cfg-threshold-low').getProperty('value') * 10;
         var query = [deviceId, isodate, mode, thresholdNormal, thresholdLow];
-        api.query('thermostat.set_configuration', query, deviceId, JsonRpcGetConfiguration);
+        api.query('thermostat.set_configuration', query, deviceId, JsonRpcSetConfigurationResponse);
     }
 
     window.addEvent('domready', function(){
         api.registerErrback(JsonRpcErrorHandler);
         JsonRpcGetConfiguration();
-        api.query('thermostat.get_states_range', [deviceId], deviceId, JsonRpcState);
         JsonRpcSensors();
         $('cfg-update').addEvent('click', JsonRpcSetConfiguration);
     });
@@ -79,19 +148,38 @@
 {% block content %}
     <h1>{{ name|default:"Unknown" }}</h1>
 	{% if tempDevices %}
+	<div id="temperature-plot" style="display:none;">
+	  <div id="tooltip" style="display:none;"></div>
+	  <h2>Temperatures</h2>
+	  <div id="temperature-chart" style="height: 400px;"></div>
+	</div>
 	<div id="configuration" style="display:none;">
 	  <h2>Current configuration</h2>
-		<label for="cfg-mode">Thermostat mode</label>
-		<select id="cfg-mode">
-		  <option value="0">Normal</option>
-		  <option value="1">Low</option>
-		</select>
-		<label for="cfg-threshold-normal">Normal threshold</label>
-		<input type="number" id="cfg-threshold-normal" max="99" min="-99"/>
-		<label for="cfg-threshold-low">Low threshold</label>
-		<input type="number" id="cfg-threshold-low" max="99" min="-99"/>
-		Last updated <span id="cfg-updated"></span>.<br/>
-		<input type="submit" id="cfg-update" value="Update">
+	    <ul>
+		  <li>
+			<label for="cfg-mode">Thermostat mode</label>
+			<select id="cfg-mode">
+			  <option value="0">Normal</option>
+			  <option value="1">Low</option>
+			</select>
+			<ul>
+			  <li>
+				<label for="cfg-threshold-normal">Normal threshold</label>
+				<input type="number" id="cfg-threshold-normal" max="99" min="-99"/>
+			  </li>
+			  <li>
+				<label for="cfg-threshold-low">Low threshold</label>
+				<input type="number" id="cfg-threshold-low" max="99" min="-99"/>
+			  </li>
+			</ul>
+		  </li>
+		  <li>
+			Last updated <span id="cfg-updated"></span>.
+		  </li>
+		  <li>
+			<input type="submit" id="cfg-update" value="Update">
+		  </li>
+		</ul>
 	</div>
     <div id="sensors" style="display:none;">
 	  <H2>Sensors</h2>
