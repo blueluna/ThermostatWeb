@@ -1,5 +1,5 @@
 @import url("/static/font/opensans/stylesheet.css");
-html {
+html, input, select {
     color: #333;
     background-color: #fff;
     font-family: "Open Sans", "Calibri", sans-serif;
@@ -23,4 +23,47 @@ body {
 	background-color: #fff;
 	border-left: 1px dashed #eee;
 	border-right: 1px dashed #eee;
+}
+#error {
+	padding: 0.5em 1em;
+	color: #443;
+	text-shadow: 1px 1px 0px #DDB;
+	background-color: #FEA;
+	border: 1px solid #D92;
+	display: none;
+}
+#error div {
+	padding: 0.25em;
+}
+.xchart .line {
+  stroke-width: 1px;
+}
+.xchart circle {
+  stroke-width: 1px;
+}
+.xchart .axis text {
+  font-family: "Open Sans", sans-serif;
+}
+.xchart .color0 circle {
+  fill: rgba(255, 255, 255, 0.0);
+  stroke: rgba(255, 255, 255, 0.0);
+}
+.xchart .color0.comp .line {
+  stroke: #999;
+}
+.xchart .color0.comp circle {
+  stroke: #999;
+}
+#tooltip {
+    position: absolute;
+    display: none;
+    background-color: rgba(255, 255, 255, 0.78);
+    border: 1px solid #3880AA;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25em;
+    font-size: 9pt;
+}
+#chart {
+    height: 400px;
+    margin: 1em;
 }

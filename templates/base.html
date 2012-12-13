@@ -3,17 +3,26 @@
 <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" /> 
     <title>{% block title %}{% endblock %} - Thermostat</title>
-    <link rel="stylesheet" href="{{STATIC_URL}}thermostat.css" />
     <script type="text/javascript" src="{{STATIC_URL}}mootools-core-1.4.5-full-nocompat-yc.js"></script>
-    <script type="text/javascript" src="{{STATIC_URL}}thermostat.js"></script>
+    <script type="text/javascript" src="{{STATIC_URL}}mootools-more-1.4.0.1.js"></script>
     <link rel="stylesheet" href="{{STATIC_URL}}xcharts.min.css" />
     <script type="text/javascript" src="{{STATIC_URL}}d3.v2.min.js"></script>
 	<script type="text/javascript" src="{{STATIC_URL}}xcharts.min.js"></script>
+    <link rel="stylesheet" href="{{STATIC_URL}}thermostat.css" />
+    <script type="text/javascript" src="{{STATIC_URL}}thermostat.js"></script>
 	{% block head %}{% endblock %}
     <style type="text/css">
         {% block stylesheet %}{% endblock %}
     </style>
     <script type="text/javascript">
+        var JsonRpcErrorHandler = function(id, code, message)
+        {
+            var root = $('error');
+            var error = new Element('div')
+            error.set('text', 'There was an JSON-RPC error. '+message);
+            root.adopt(error);
+            root.setStyle('display', 'block');
+        }
         {% block javascript %}{% endblock %}
     </script>
 </head>

@@ -1,12 +1,106 @@
 {% extends "base.html" %}
 {% block title %}Thermostat{% endblock %}
+{% block javascript %}
+    var api = new ThermostatAPI("/thermostat/json/");
+    var deviceId = {{ id }};
+    var sensors = [{% for device in tempDevices %}{ name: "{{ device.name }}", id: "{{ device.deviceId }}", url: "{% url thermostat.views.thermostat_temperature id device.deviceId %}" },{% endfor %}];
+
+    var JsonRpcConfiguration = function(id, result)
+    {
+        if (result) {
+            var when = d3.time.format.iso.parse(result['datetime']);
+            var mode = result['mode'];
+            var thresholdNormal = result['thresholdNormal'] / 10;
+            var thresholdLow = result['thresholdLow'] / 10;
+
+            var element = $$("#cfg-mode")[0];
+            element.setProperty('value', mode);
+            element = $$("#cfg-threshold-normal")[0];
+            element.setProperty('value', thresholdNormal.toFixed(1));
+            element = $$("#cfg-threshold-low")[0];
+            element.setProperty('value', thresholdLow.toFixed(1));
+            $$("#cfg-updated")[0].set('text', when.format('%H:%M %Y-%m-%d'));
+            element = $$("#configuration")[0];
+            element.setStyle('display', 'block');
+        }
+    }
+    var JsonRpcState = function(id, result)
+    {
+        if (result) {
+            var states = result['states'];
+            var root = $("state");
+            var table = new HtmlTable($('state-table'));
+            var day = -1
+            states.each(function (item) {
+                var when = d3.time.format.iso.parse(item['datetime']);
+                var date = '';
+                if (when.getDay() != day) {
+                    date = when.format('%Y-%m-%d');
+                    day = when.getDay();
+                }
+                var time = when.format('%H:%M');
+                var state = item['value'] ? 'On' : 'Off'
+                table.push([date, time, state]);
+            });
+            root.setStyle('display', 'block');
+        }
+    }
+    var JsonRpcSensors = function(id, result)
+    {
+        var table = new HtmlTable($('sensor-table'));
+        sensors.each(function (item) {
+            table.push(['<a href="'+item.url+'">'+item.name+' ('+item.id+')</a>']);
+        });
+        $("sensors").setStyle('display', 'block');
+    }
+    var JsonRpcGetConfiguration = function(id, result)
+    {
+        api.query('thermostat.get_configuration', [deviceId], deviceId, JsonRpcConfiguration);
+    }
+    var JsonRpcSetConfiguration = function()
+    {
+        var datetime = new Date();
+        var isodate = datetime.toISOString();
+        var mode = $('cfg-mode').getProperty('value');
+        var thresholdNormal = $('cfg-threshold-normal').getProperty('value') * 10;
+        var thresholdLow = $('cfg-threshold-low').getProperty('value') * 10;
+        var query = [deviceId, isodate, mode, thresholdNormal, thresholdLow];
+        api.query('thermostat.set_configuration', query, deviceId, JsonRpcGetConfiguration);
+    }
+
+    window.addEvent('domready', function(){
+        api.registerErrback(JsonRpcErrorHandler);
+        JsonRpcGetConfiguration();
+        api.query('thermostat.get_states_range', [deviceId], deviceId, JsonRpcState);
+        JsonRpcSensors();
+        $('cfg-update').addEvent('click', JsonRpcSetConfiguration);
+    });
+{% endblock %}
 {% block content %}
-    {% if tempDevices %}
-        <ul>
-            {% for device in tempDevices %}
-                <li><a href="{% url thermostat.views.temperature device.deviceId %}">{{ device.deviceId }}: {{ device.name }}</a></li>
-            {% endfor %}
-        </ul>
+    <h1>{{ name|default:"Unknown" }}</h1>
+	{% if tempDevices %}
+	<div id="configuration" style="display:none;">
+	  <h2>Current configuration</h2>
+		<label for="cfg-mode">Thermostat mode</label>
+		<select id="cfg-mode">
+		  <option value="0">Normal</option>
+		  <option value="1">Low</option>
+		</select>
+		<label for="cfg-threshold-normal">Normal threshold</label>
+		<input type="number" id="cfg-threshold-normal" max="99" min="-99"/>
+		<label for="cfg-threshold-low">Low threshold</label>
+		<input type="number" id="cfg-threshold-low" max="99" min="-99"/>
+		Last updated <span id="cfg-updated"></span>.<br/>
+		<input type="submit" id="cfg-update" value="Update">
+	</div>
+    <div id="sensors" style="display:none;">
+	  <H2>Sensors</h2>
+	  <table id="sensor-table"></table>
+	</div>
+	<div id="state" style="display:none;">
+	  <h2>State changes</h2>
+	  <table id="state-table"></table>
+	</div>
     {% else %}
         <p>No thermostat device.</p>
     {% endif %}

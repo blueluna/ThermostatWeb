@@ -1,42 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Temperatures for {{ device|default:"Unknown" }}{% endblock %}
-{% block header %}Temperatures for {{ device|default:"Unknown" }}{% endblock %}
-{% block stylesheet %}
-.xchart .line {
-  stroke-width: 1px;
-}
-.xchart circle {
-  stroke-width: 1px;
-}
-.xchart .axis text {
-  font-family: "Open Sans", sans-serif;
-}
-#tooltip {
-    position: absolute;
-    display: none;
-    background-color: rgba(255, 255, 255, 0.78);
-    border: 1px solid #3880AA;
-    padding: 0.125em 0.25em;
-    border-radius: 0.25em;
-    font-size: 9pt;
-}
-#chart {
-    height: 400px;
-    margin: 1em;
-}
-{% endblock %}
+{% block title %}Temperatures for {{ name|default:"Unknown" }}{% endblock %}
+{% block header %}Temperatures for {{ name|default:"Unknown" }} ({{ temperatureId|default:"Unknown" }}){% endblock %}
 {% block javascript %}
     var api = new ThermostatAPI("/thermostat/json/");
-    var deviceId = '{{ device }}';
-    var chart;
-
-    var drawChart = function(name, series) {
-        var data = {
-            "xScale": "time",
-            "yScale": "linear",
-            "main": [ { "className": ".temperatures", "data": series } ]
-        };
-        var opts = {
+    var thermostatId = {{ thermostatId }};
+    var temperatureId = '{{ temperatureId }}';
+    var chartData = {
+        "xScale": "time",
+        "yScale": "linear",
+        "main": [ { "className": ".temperatures", "data": null } ],
+        "comp": [ { "className": ".states", "type": "line", "data": null } ]
+    };
+    var chartOptions = {
             "tickFormatX": function (x) { return d3.time.format('%H:%M')(x); },
             "tickFormatY": function (y) { return d3.format('.1f')(y); },
             "interpolation": "step-after",
@@ -53,16 +28,17 @@
             "mouseout": function (x) {
                 $$('#tooltip').setStyle('display', 'none');
             }
-        };
-        chart = new xChart('line-dotted', data, '#chart', opts);
-    }
+    };
+    var chart;
 
-    var ErrorHandler = function(id, code, message)
-    {
-        var errorElement = $('error');
-        errorElement.set('html', 'There was an JSON-RPC error.<pre>'+message+'</pre>');
+    var drawTemperatures = function(name, series) {
+        chartData.main[0].data = series;
+        chart = new xChart('line-dotted', chartData, '#chart', chartOptions);
     }
-
+    var drawStates = function(name, series) {
+        chartData.comp[0].data = series;
+        chart = new xChart('line-dotted', chartData, '#chart', chartOptions);
+    }
     var JsonRpcTemperatures = function(id, result)
     {
         if (result) {
@@ -74,13 +50,29 @@
                 var value = parseFloat(item['value']);
                 series.push({x: date, y: value});
             });
-            drawChart(device, series);
+            drawTemperatures(device, series);
         }
     }
-
+    var JsonRpcStates = function(id, result)
+    {
+        if (result) {
+            var device = result['device'];
+            var states = result['states'];
+            var series = new Array();
+            states.each(function (item) {
+                var date = d3.time.format.iso.parse(item['datetime']);
+                var value = 25 + item['value'];
+                series.push({x: date, y: value});
+            });
+            if (series.length > 0) {
+                drawStates(device, series);
+            }
+        }
+    }
     window.addEvent('domready', function(){
-        api.registerErrback(ErrorHandler);
-        api.query('thermostat.temperature.now', [deviceId], deviceId, JsonRpcTemperatures);
+        api.registerErrback(JsonRpcErrorHandler);
+        api.query('thermostat.temperature.get_range', [temperatureId], temperatureId, JsonRpcTemperatures);
+        api.query('thermostat.get_states_range', [thermostatId], thermostatId, JsonRpcStates);
     });
 {% endblock %}
 {% block content %}
